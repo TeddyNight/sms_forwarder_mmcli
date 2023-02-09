@@ -1,0 +1,11 @@
+[Unit]
+Description=SMS Forwarder (using ModemManager)
+After=dbus.target
+
+[Service]
+Type=ExecStart
+Restart=yes
+ExecStart=/usr/local/bin/smsforwarder
+
+[Install]
+WantedBy=multi-user.target

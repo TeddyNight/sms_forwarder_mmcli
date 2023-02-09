@@ -1,0 +1,37 @@
+#!/usr/bin/python3
+from gi.repository import GLib
+
+import dbus
+import dbus.mainloop.glib
+import requests
+
+def msg_forward(text):
+    ret = True
+    try:
+        requests.get('https://<Telegram api>/api?token=<YOUR TOKEN>&chat-id=<YOUR CHAT ID>&text='+requests.utils.quote('#Phone \n'+text))
+    except Exception:
+        ret=False
+    return ret
+
+def msg_added_handler(path, received):
+    if not received:
+        return
+    #print("Receive at "+path)
+    msg = bus.get_object("org.freedesktop.ModemManager1",path)
+    props_iface = dbus.Interface(msg, "org.freedesktop.DBus.Properties")
+    content = props_iface.GetAll("org.freedesktop.ModemManager1.Sms")
+    text = "Number: "+content['Number']+"\nText:\n"+content['Text']+"\nTime: "+content['Timestamp']
+    msg_forward(text)
+
+if __name__ == '__main__':
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    bus = dbus.SystemBus()
+    try:
+        object = bus.get_object("org.freedesktop.ModemManager1","/org/freedesktop/ModemManager1/Modem/0")
+        object.connect_to_signal("Added", msg_added_handler, dbus_interface="org.freedesktop.ModemManager1.Modem.Messaging")
+    except dbus.DBusException:
+        traceback.print_exc()
+        print(usage)
+        sys.exit(1)
+    loop = GLib.MainLoop()
+    loop.run()
