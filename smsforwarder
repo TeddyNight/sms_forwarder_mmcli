@@ -20,6 +20,8 @@ def msg_added_handler(path, received):
     msg = bus.get_object("org.freedesktop.ModemManager1",path)
     props_iface = dbus.Interface(msg, "org.freedesktop.DBus.Properties")
     content = props_iface.GetAll("org.freedesktop.ModemManager1.Sms")
+    while not content['Text'].strip():
+        content = props_iface.GetAll("org.freedesktop.ModemManager1.Sms")
     text = "Number: "+content['Number']+"\nText:\n"+content['Text']+"\nTime: "+content['Timestamp']
     msg_forward(text)
 
