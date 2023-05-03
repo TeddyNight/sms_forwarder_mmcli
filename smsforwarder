@@ -20,8 +20,14 @@ def msg_added_handler(path, received):
     msg = bus.get_object("org.freedesktop.ModemManager1",path)
     props_iface = dbus.Interface(msg, "org.freedesktop.DBus.Properties")
     content = props_iface.GetAll("org.freedesktop.ModemManager1.Sms")
-    while not content['Text'].strip():
+    # Messages has not been completely received
+    while (content['State'] < 3):
+        msg = bus.get_object("org.freedesktop.ModemManager1",path)
+        props_iface = dbus.Interface(msg, "org.freedesktop.DBus.Properties")
         content = props_iface.GetAll("org.freedesktop.ModemManager1.Sms")
+    # Outgoing Messages MM_SMS_STATE_SENDING & MM_SMS_STATE_SENT
+    if (content['State'] != 3):
+        return
     text = "Number: "+content['Number']+"\nText:\n"+content['Text']+"\nTime: "+content['Timestamp']
     msg_forward(text)
 
