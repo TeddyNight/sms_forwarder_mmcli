@@ -3,7 +3,7 @@ Description=SMS Forwarder (using ModemManager)
 After=dbus.target
 
 [Service]
-Type=ExecStart
+Type=Exec
 Restart=yes
 ExecStart=/usr/local/bin/smsforwarder
 
