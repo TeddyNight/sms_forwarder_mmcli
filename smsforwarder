@@ -4,6 +4,13 @@ from gi.repository import GLib
 import dbus
 import dbus.mainloop.glib
 import requests
+import traceback
+import sys
+import signal
+import multiprocessing.pool
+
+pool = multiprocessing.pool.ThreadPool()
+loop = GLib.MainLoop()
 
 def msg_forward(text):
     ret = True
@@ -16,6 +23,9 @@ def msg_forward(text):
 def msg_added_handler(path, received):
     if not received:
         return
+    pool.apply_async(msg_handler, args=(path,))
+
+def msg_handler(path):
     #print("Receive at "+path)
     msg = bus.get_object("org.freedesktop.ModemManager1",path)
     props_iface = dbus.Interface(msg, "org.freedesktop.DBus.Properties")
@@ -31,15 +41,22 @@ def msg_added_handler(path, received):
     text = "Number: "+content['Number']+"\nText:\n"+content['Text']+"\nTime: "+content['Timestamp']
     msg_forward(text)
 
+def sigint_handler(sig, frame):
+    if sig == signal.SIGINT:
+        pool.close()
+        pool.join()
+        loop.quit()
+
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     bus = dbus.SystemBus()
+    signal.signal(signal.SIGINT, sigint_handler)
     try:
         object = bus.get_object("org.freedesktop.ModemManager1","/org/freedesktop/ModemManager1/Modem/0")
         object.connect_to_signal("Added", msg_added_handler, dbus_interface="org.freedesktop.ModemManager1.Modem.Messaging")
     except dbus.DBusException:
         traceback.print_exc()
-        print(usage)
+        pool.close()
+        loop.quit()
         sys.exit(1)
-    loop = GLib.MainLoop()
     loop.run()
