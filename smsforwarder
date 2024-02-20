@@ -8,6 +8,7 @@ import traceback
 import sys
 import signal
 import multiprocessing.pool
+import time
 
 pool = multiprocessing.pool.ThreadPool()
 loop = GLib.MainLoop()
@@ -31,13 +32,18 @@ def msg_handler(path):
     props_iface = dbus.Interface(msg, "org.freedesktop.DBus.Properties")
     content = props_iface.GetAll("org.freedesktop.ModemManager1.Sms")
     # Messages has not been completely received
-    while (content['State'] < 3):
+    retry_times = 0
+    while (content['State'] < 3 and retry_times < 3):
         msg = bus.get_object("org.freedesktop.ModemManager1",path)
         props_iface = dbus.Interface(msg, "org.freedesktop.DBus.Properties")
         content = props_iface.GetAll("org.freedesktop.ModemManager1.Sms")
-    # Outgoing Messages MM_SMS_STATE_SENDING & MM_SMS_STATE_SENT
-    if (content['State'] != 3):
+        retry_times = retry_times + 1
+        time.sleep(3)
+    # Outgoing Messages MM_SMS_STATE_SENDING and MM_SMS_STATE_SENT
+    if (content['State'] != 3 and retry_times < 3):
         return
+    elif (content['State'] != 3 and retry_times >= 3):
+        context['Text'] = "receive sms failed"
     text = "Number: "+content['Number']+"\nText:\n"+content['Text']+"\nTime: "+content['Timestamp']
     msg_forward(text)
 
